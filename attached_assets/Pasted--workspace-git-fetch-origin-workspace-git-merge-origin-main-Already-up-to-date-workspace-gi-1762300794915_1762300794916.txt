@@ -1,0 +1,49 @@
+~/workspace$ git fetch origin
+~/workspace$ git merge origin/main
+Already up to date.
+~/workspace$ git add .
+~/workspace$ git commit -m "Merged remote changes"
+[main d4303f7] Merged remote changes
+ 2 files changed, 132 insertions(+)
+ create mode 100644 attached_assets/Pasted--workspace-git-init-Reinitialized-existing-Git-repository-in-home-runner-workspace-git-worksp-1762300139343_1762300139344.txt
+ create mode 100644 attached_assets/Pasted--workspace-git-init-Reinitialized-existing-Git-repository-in-home-runner-workspace-git-worksp-1762300169595_1762300169596.txt
+~/workspace$ git push origin main
+Enumerating objects: 124, done.
+Counting objects: 100% (124/124), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (123/123), done.
+Writing objects: 100% (124/124), 272.71 KiB | 15.15 MiB/s, done.
+Total 124 (delta 64), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (64/64), done.
+remote: fatal: did not receive expected object 9777c3db5d15f0c84346a37c9abc0759515607a5
+error: remote unpack failed: index-pack failed
+To https://github.com/savagelylol/Browser-Bot.git
+ ! [remote rejected] main -> main (failed)
+error: failed to push some refs to 'https://github.com/savagelylol/Browser-Bot.git'
+~/workspace$ git pull origin main --rebase
+fatal: couldn't find remote ref main
+~/workspace$ git branch -r
+  gitsafe-backup/main
+  origin/HEAD -> origin/main
+  origin/main
+~/workspace$ git fetch origin
+~/workspace$ git checkout main
+Already on 'main'
+Your branch is ahead of 'origin/main' by 25 commits.
+  (use "git push" to publish your local commits)
+~/workspace$ git rebase origin/main
+Current branch main is up to date.
+~/workspace$ git push origin main
+Enumerating objects: 124, done.
+Counting objects: 100% (124/124), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (123/123), done.
+Writing objects: 100% (124/124), 272.71 KiB | 19.48 MiB/s, done.
+Total 124 (delta 64), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (64/64), done.
+remote: fatal: did not receive expected object 9777c3db5d15f0c84346a37c9abc0759515607a5
+error: remote unpack failed: index-pack failed
+To https://github.com/savagelylol/Browser-Bot.git
+ ! [remote rejected] main -> main (failed)
+error: failed to push some refs to 'https://github.com/savagelylol/Browser-Bot.git'
+~/workspace$ 

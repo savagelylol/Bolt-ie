@@ -1,0 +1,30 @@
+modules = ["nodejs-20"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["chromium", "firefox", "xorg.libxcb", "xorg.libX11", "xorg.libXext", "xorg.libXrandr", "xorg.libXcomposite", "xorg.libXcursor", "xorg.libXdamage", "xorg.libXfixes", "xorg.libXi", "xorg.libXrender", "gtk3", "pango", "atk", "cairo", "gdk-pixbuf", "glib", "alsa-lib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "discordmium-bot"
+
+[[workflows.workflow]]
+name = "discordmium-bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node run.js"
+
+[workflows.workflow.metadata]
+outputType = "console"

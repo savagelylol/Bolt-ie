@@ -1,0 +1,61 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👤 Browse command from: savagelylol.
+🔄 Resetting browser session...
+🦊 Switching to Firefox browser...
+  Closing Chrome...
+  Launching Firefox with Playwright...
+✗ Firefox launch failed: browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /nix/store/82nfhadwnjx61kjy44xvcj9inj14i6c9-firefox-140.0.4/bin/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-TsSkfP -juggler-pipe --no-sandbox --disable-setuid-sandbox -silent
+<launched> pid=3964
+[pid=3964][err] [3964] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+[pid=3964][err] *** You are running in headless mode.
+[pid=3964] <process did exit: exitCode=0, signal=null>
+[pid=3964] starting temporary directories cleanup
+Call log:
+  - <launching> /nix/store/82nfhadwnjx61kjy44xvcj9inj14i6c9-firefox-140.0.4/bin/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-TsSkfP -juggler-pipe --no-sandbox --disable-setuid-sandbox -silent
+  - <launched> pid=3964
+  - [pid=3964][err] [3964] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+  - [pid=3964][err] *** You are running in headless mode.
+  - [pid=3964] <process did exit: exitCode=0, signal=null>
+  - [pid=3964] starting temporary directories cleanup
+  - [pid=3964] <gracefully close start>
+  - [pid=3964] finished temporary directories cleanup
+  - [pid=3964] <gracefully close end>
+
+✗ Firefox launch failed: browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /nix/store/82nfhadwnjx61kjy44xvcj9inj14i6c9-firefox-140.0.4/bin/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-TsSkfP -juggler-pipe --no-sandbox --disable-setuid-sandbox -silent
+<launched> pid=3964
+[pid=3964][err] [3964] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+[pid=3964][err] *** You are running in headless mode.
+[pid=3964] <process did exit: exitCode=0, signal=null>
+[pid=3964] starting temporary directories cleanup
+Call log:
+  - <launching> /nix/store/82nfhadwnjx61kjy44xvcj9inj14i6c9-firefox-140.0.4/bin/firefox -no-remote -headless -profile /tmp/playwright_firefoxdev_profile-TsSkfP -juggler-pipe --no-sandbox --disable-setuid-sandbox -silent
+  - <launched> pid=3964
+  - [pid=3964][err] [3964] Sandbox: CanCreateUserNamespace() clone() failure: EPERM
+  - [pid=3964][err] *** You are running in headless mode.
+  - [pid=3964] <process did exit: exitCode=0, signal=null>
+  - [pid=3964] starting temporary directories cleanup
+  - [pid=3964] <gracefully close start>
+  - [pid=3964] finished temporary directories cleanup
+  - [pid=3964] <gracefully close end>
+
+✗ Browser switch failed
+   Error: Firefox initialization failed - please use Chrome instead
+✗ Failed to switch browser, aborting reset
+⚠️  Firefox failed, falling back to Chrome...
+🔄 Resetting browser session...
+🌐 Switching to Chrome browser...
+  Launching Chrome with Puppeteer...
+✓ Chrome browser initialized
+✓ Browser session ready
+🔍 Loading content filters...
+✓ Content filters loaded successfully
+🌐 Using browser: firefox
+🌐 URL provided: google.com
+  → Auto-added https:// https://google.com
