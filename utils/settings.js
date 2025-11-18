@@ -35,7 +35,11 @@ function getUserSettings(userId) {
         performanceMode: false,
         updateInterval: 5000,
         darkMode: true,
-        adBlock: true
+        adBlock: true,
+        sessionTimeout: 300000,
+        screenshotQuality: 80,
+        autoCloseBrowser: true,
+        mouseSensitivityDefault: 70
     };
 }
 

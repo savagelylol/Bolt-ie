@@ -114,10 +114,8 @@ let firefoxLaunchOptions;
 /** FUNCTIONS: INIT */
 
 async function loadFilters() {
-        console.log(chalk.cyan('🔍 Loading content filters...'));
         const fetchData = await fetch(NSFW_LIST);
         obscureWords = await fetchData.text();
-        console.log(chalk.green('✓ Content filters loaded successfully'));
 }
 
 function getBrowserByType(browserType) {
@@ -367,7 +365,11 @@ async function move(dir) {
  * @param {*} messageObject The message object that shall be shown once the message is edited.
 */
 async function update(int, messageObject) {
-        const screenshot = await page.screenshot();
+        const screenshotQuality = getUserSettings(runningUser).screenshotQuality || 80;
+        const screenshot = await page.screenshot({
+                type: screenshotQuality < 100 ? 'jpeg' : 'png',
+                quality: screenshotQuality < 100 ? screenshotQuality : undefined
+        });
 
         await int.editOriginalMessage(messageObject, { name: 'file.png', file: screenshot });
 }
@@ -388,7 +390,11 @@ async function startPerformanceMode(bot, userId, interval) {
                                         return;
                                 }
 
-                                const screenshot = await page.screenshot();
+                                const screenshotQuality = getUserSettings(userId).screenshotQuality || 80;
+                                const screenshot = await page.screenshot({
+                                        type: screenshotQuality < 100 ? 'jpeg' : 'png',
+                                        quality: screenshotQuality < 100 ? screenshotQuality : undefined
+                                });
                                 
                                 // Update with proper embed structure
                                 await bot.editMessage(messageID.channel.id, messageID.id, {
@@ -488,11 +494,7 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
         }
 
         bot.on('ready', () => {
-                console.log(chalk.green.bold('\n✓ Connected to Discord!'));
-                console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-                console.log(chalk.white('  Bot:'), chalk.yellow(bot.user.username + '#' + bot.user.discriminator));
-                console.log(chalk.white('  ID:'), chalk.dim(bot.user.id));
-                console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+                console.log(chalk.green(`✓ Connected as ${bot.user.username}#${bot.user.discriminator}`));
 
                 // Set bot status
                 const status = statusConfig.status || 'streaming';
@@ -503,10 +505,6 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                         name: activityName,
                         type: activityType
                 });
-                console.log(chalk.green(`✓ Bot status set to ${status}`));
-                console.log(chalk.dim(`   Activity: ${activityName}`));
-
-                console.log(chalk.magenta('🌐 Registering slash commands...'));
 
                 bot.bulkEditGuildCommands(guildID, [
                         {
@@ -544,10 +542,7 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                 description: 'Configure your browsing preferences'
                         }
                 ]).then(() => {
-                        console.log(chalk.green('✓ Slash commands registered successfully'));
-                        console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-                        console.log(chalk.green.bold('🚀 Bot is ready! Use /browse in your Discord server'));
-                        console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+                        console.log(chalk.green.bold('🚀 Bot ready!\n'));
                 }).catch(err => {
                         console.log(chalk.red('✗ Failed to register slash commands'));
                         console.log(chalk.yellow('⚠️  Make sure the bot has "applications.commands" scope'));
@@ -733,19 +728,27 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                         runningUser = int.member.id;
                                         console.log(chalk.green('🎮 Session started for:'), chalk.yellow(int.member.user.username));
 
-                                        date = Date.now() + clearTime;
-                                        const minutes = Math.floor(clearTime / 60000);
+                                        const userTimeout = getUserSettings(int.member.id).sessionTimeout || clearTime;
+                                        date = Date.now() + userTimeout;
+                                        const minutes = Math.floor(userTimeout / 60000);
                                         console.log(chalk.dim(`   Session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''}...`));
 
                                         setTimeout(async () => {
                                                 console.log(chalk.yellow('⏱️  Session timeout - closing browser session'));
-                                                const resetSuccess = await resetProcess(sussyFilter);
-                                                if (!resetSuccess) {
-                                                        console.log(chalk.yellow('⚠️  Failed to reset browser after timeout'));
+                                                const userAutoClose = getUserSettings(int.member.id).autoCloseBrowser;
+                                                if (userAutoClose !== false) {
+                                                        const resetSuccess = await resetProcess(sussyFilter);
+                                                        if (!resetSuccess) {
+                                                                console.log(chalk.yellow('⚠️  Failed to reset browser after timeout'));
+                                                        }
                                                 }
-                                        }, clearTime);
+                                        }, userTimeout);
 
-                                        const image = await page.screenshot();
+                                        const screenshotQuality = getUserSettings(int.member.id).screenshotQuality || 80;
+                                        const image = await page.screenshot({ 
+                                                type: screenshotQuality < 100 ? 'jpeg' : 'png',
+                                                quality: screenshotQuality < 100 ? screenshotQuality : undefined
+                                        });
                                         const ids = [];
 
                                         for (let i = 0; i < 16; i++) {
@@ -1101,21 +1104,29 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
 
                                         try {
                                                 runningUser = presetInt.member.id;
-                                                date = Date.now() + clearTime;
+                                                const presetTimeout = presetUserSettings.sessionTimeout || clearTime;
+                                                date = Date.now() + presetTimeout;
 
                                                 setTimeout(async () => {
                                                         console.log(chalk.yellow('⏱️  Session timeout - closing browser session'));
-                                                        const resetSuccess = await resetProcess(sussyFilter, currentBrowserType);
-                                                        if (!resetSuccess) {
-                                                                console.log(chalk.yellow('⚠️  Failed to reset browser after timeout'));
+                                                        const userAutoClose = presetUserSettings.autoCloseBrowser;
+                                                        if (userAutoClose !== false) {
+                                                                const resetSuccess = await resetProcess(sussyFilter, currentBrowserType);
+                                                                if (!resetSuccess) {
+                                                                        console.log(chalk.yellow('⚠️  Failed to reset browser after timeout'));
+                                                                }
                                                         }
-                                                }, clearTime);
+                                                }, presetTimeout);
 
                                                 await page.goto(selected.url);
                                                 urlHistory.push(selected.url);
                                                 console.log(chalk.green('✓ Navigated to:'), chalk.dim(selected.url));
 
-                                                const image = await page.screenshot();
+                                                const presetScreenshotQuality = presetUserSettings.screenshotQuality || 80;
+                                                const image = await page.screenshot({
+                                                        type: presetScreenshotQuality < 100 ? 'jpeg' : 'png',
+                                                        quality: presetScreenshotQuality < 100 ? presetScreenshotQuality : undefined
+                                                });
                                                 const ids = [];
 
                                                 for (let i = 0; i < 16; i++) {
@@ -1333,6 +1344,7 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                 const settingsIds = {
                                         performance: String(Math.random()),
                                         browserSettings: String(Math.random()),
+                                        sessionSettings: String(Math.random()),
                                         browserChoice: String(Math.random()),
                                         perfToggle: String(Math.random()),
                                         interval2s: String(Math.random()),
@@ -1342,6 +1354,13 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                         browserFirefox: String(Math.random()),
                                         darkModeToggle: String(Math.random()),
                                         adBlockToggle: String(Math.random()),
+                                        timeout3min: String(Math.random()),
+                                        timeout5min: String(Math.random()),
+                                        timeout10min: String(Math.random()),
+                                        quality60: String(Math.random()),
+                                        quality80: String(Math.random()),
+                                        quality100: String(Math.random()),
+                                        autoCloseToggle: String(Math.random()),
                                         back: String(Math.random())
                                 };
 
@@ -1367,6 +1386,13 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                                                                `Dark Mode: ${userSettings.darkMode ? '✅ Enabled' : '❌ Disabled'}\n` +
                                                                                `Ad Block: ${userSettings.adBlock !== false ? '✅ Enabled' : '❌ Disabled'}`,
                                                                         inline: false
+                                                                },
+                                                                {
+                                                                        name: '🕐 Session Settings',
+                                                                        value: `Timeout: ${userSettings.sessionTimeout / 60000} min\n` +
+                                                                               `Screenshot Quality: ${userSettings.screenshotQuality}%\n` +
+                                                                               `Auto-Close: ${userSettings.autoCloseBrowser ? '✅ Enabled' : '❌ Disabled'}`,
+                                                                        inline: false
                                                                 }
                                                         ],
                                                         footer: { text: 'Select a category to configure' }
@@ -1376,7 +1402,8 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                                                 type: 1,
                                                                 components: [
                                                                         { type: 2, label: `${perfIcon} Performance`, custom_id: settingsIds.performance, style: 1 },
-                                                                        { type: 2, label: '🌐 Browser Settings', custom_id: settingsIds.browserSettings, style: 2 }
+                                                                        { type: 2, label: '🌐 Browser', custom_id: settingsIds.browserSettings, style: 2 },
+                                                                        { type: 2, label: '🕐 Session', custom_id: settingsIds.sessionSettings, style: 2 }
                                                                 ]
                                                         }
                                                 ]
@@ -1580,6 +1607,89 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                         });
                                 }
 
+                                async function showSessionSettingsMenu(interaction) {
+                                        const currentSettings = getUserSettings(int.member.id);
+                                        const timeout = currentSettings.sessionTimeout;
+                                        const quality = currentSettings.screenshotQuality;
+                                        const autoClose = currentSettings.autoCloseBrowser;
+
+                                        await interaction.editOriginalMessage({
+                                                embeds: [{
+                                                        title: '🕐 Session Settings',
+                                                        description: 'Configure session behavior and quality preferences',
+                                                        color: 0xFF6B35,
+                                                        fields: [
+                                                                {
+                                                                        name: '⏱️ Session Timeout',
+                                                                        value: `${timeout / 60000} minutes`,
+                                                                        inline: true
+                                                                },
+                                                                {
+                                                                        name: '📸 Screenshot Quality',
+                                                                        value: `${quality}%`,
+                                                                        inline: true
+                                                                },
+                                                                {
+                                                                        name: '🚪 Auto-Close Browser',
+                                                                        value: autoClose ? '✅ Enabled' : '❌ Disabled',
+                                                                        inline: true
+                                                                },
+                                                                {
+                                                                        name: 'ℹ️ Session Timeout',
+                                                                        value: 'Maximum time a browsing session can stay active before automatically closing.',
+                                                                        inline: false
+                                                                },
+                                                                {
+                                                                        name: 'ℹ️ Screenshot Quality',
+                                                                        value: 'Higher quality screenshots look better but take longer to send. Lower quality is faster.',
+                                                                        inline: false
+                                                                },
+                                                                {
+                                                                        name: 'ℹ️ Auto-Close Browser',
+                                                                        value: 'When enabled, closes the browser automatically when your session expires or you stop using it.',
+                                                                        inline: false
+                                                                }
+                                                        ],
+                                                        footer: { text: 'Adjust your session preferences' }
+                                                }],
+                                                components: [
+                                                        {
+                                                                type: 1,
+                                                                components: [
+                                                                        { type: 2, label: '3 min', custom_id: settingsIds.timeout3min, style: timeout === 180000 ? 1 : 2 },
+                                                                        { type: 2, label: '5 min', custom_id: settingsIds.timeout5min, style: timeout === 300000 ? 1 : 2 },
+                                                                        { type: 2, label: '10 min', custom_id: settingsIds.timeout10min, style: timeout === 600000 ? 1 : 2 }
+                                                                ]
+                                                        },
+                                                        {
+                                                                type: 1,
+                                                                components: [
+                                                                        { type: 2, label: '60% Quality', custom_id: settingsIds.quality60, style: quality === 60 ? 1 : 2 },
+                                                                        { type: 2, label: '80% Quality', custom_id: settingsIds.quality80, style: quality === 80 ? 1 : 2 },
+                                                                        { type: 2, label: '100% Quality', custom_id: settingsIds.quality100, style: quality === 100 ? 1 : 2 }
+                                                                ]
+                                                        },
+                                                        {
+                                                                type: 1,
+                                                                components: [
+                                                                        { 
+                                                                                type: 2, 
+                                                                                label: autoClose ? 'Disable Auto-Close' : 'Enable Auto-Close', 
+                                                                                custom_id: settingsIds.autoCloseToggle, 
+                                                                                style: autoClose ? 4 : 3 
+                                                                        }
+                                                                ]
+                                                        },
+                                                        {
+                                                                type: 1,
+                                                                components: [
+                                                                        { type: 2, label: '← Back', custom_id: settingsIds.back, style: 2 }
+                                                                ]
+                                                        }
+                                                ]
+                                        });
+                                }
+
                                 await int.createFollowup({
                                         embeds: [{
                                                 title: '⚙️ Settings',
@@ -1599,6 +1709,13 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                                                        `Dark Mode: ${userSettings.darkMode ? '✅ Enabled' : '❌ Disabled'}\n` +
                                                                        `Ad Block: ${userSettings.adBlock !== false ? '✅ Enabled' : '❌ Disabled'}`,
                                                                 inline: false
+                                                        },
+                                                        {
+                                                                name: '🕐 Session Settings',
+                                                                value: `Timeout: ${userSettings.sessionTimeout / 60000} min\n` +
+                                                                       `Screenshot Quality: ${userSettings.screenshotQuality}%\n` +
+                                                                       `Auto-Close: ${userSettings.autoCloseBrowser ? '✅ Enabled' : '❌ Disabled'}`,
+                                                                inline: false
                                                         }
                                                 ],
                                                 footer: { text: 'Select a category to configure' }
@@ -1615,8 +1732,14 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                                                 },
                                                                 { 
                                                                         type: 2, 
-                                                                        label: '🌐 Browser Settings', 
+                                                                        label: '🌐 Browser', 
                                                                         custom_id: settingsIds.browserSettings, 
+                                                                        style: 2 
+                                                                },
+                                                                { 
+                                                                        type: 2, 
+                                                                        label: '🕐 Session', 
+                                                                        custom_id: settingsIds.sessionSettings, 
                                                                         style: 2 
                                                                 }
                                                         ]
@@ -1737,6 +1860,46 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                                         messageReference: { messageID: settingsInt.message.id }
                                                 });
                                                 await showBrowserChoiceMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.sessionSettings) {
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.timeout3min) {
+                                                setUserSettings(int.member.id, { sessionTimeout: 180000 });
+                                                userSettings.sessionTimeout = 180000;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.timeout5min) {
+                                                setUserSettings(int.member.id, { sessionTimeout: 300000 });
+                                                userSettings.sessionTimeout = 300000;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.timeout10min) {
+                                                setUserSettings(int.member.id, { sessionTimeout: 600000 });
+                                                userSettings.sessionTimeout = 600000;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.quality60) {
+                                                setUserSettings(int.member.id, { screenshotQuality: 60 });
+                                                userSettings.screenshotQuality = 60;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.quality80) {
+                                                setUserSettings(int.member.id, { screenshotQuality: 80 });
+                                                userSettings.screenshotQuality = 80;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.quality100) {
+                                                setUserSettings(int.member.id, { screenshotQuality: 100 });
+                                                userSettings.screenshotQuality = 100;
+                                                await showSessionSettingsMenu(settingsInt);
+                                        }
+                                        else if (customId === settingsIds.autoCloseToggle) {
+                                                const currentSettings = getUserSettings(int.member.id);
+                                                const newValue = !currentSettings.autoCloseBrowser;
+                                                setUserSettings(int.member.id, { autoCloseBrowser: newValue });
+                                                userSettings.autoCloseBrowser = newValue;
+                                                await showSessionSettingsMenu(settingsInt);
                                         }
                                         else if (customId === settingsIds.back) {
                                                 console.log(chalk.cyan('⚙️  Returning to main settings menu'));
