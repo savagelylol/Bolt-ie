@@ -64,7 +64,7 @@ Once you start browsing, you'll have access to these streamlined controls:
 Free use as long as credited.
 
 
-**And please dont misuse this to do *inapproriate things***
+**And please dont misuse this to do *inappropriate things***
 
 https://github.com/user-attachments/assets/6488c3d4-328b-4f9f-9cc0-33e03cd85b57
 
