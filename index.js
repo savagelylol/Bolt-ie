@@ -6,7 +6,7 @@ const chalk = require('chalk');
 const BrowserAdapter = require('./utils/browserAdapter');
 
 /** VERSION: CHANGE THIS TO UPDATE BOT VERSION */
-const BOT_VERSION = 'v2.1.3';
+const BOT_VERSION = 'v3.1.1';
 
 /** BLACKLIST: CHANGE, ADD OR REMOVE KEYWORDS HERE */
 const NSFW_LIST = 'https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en';
