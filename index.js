@@ -84,38 +84,70 @@ const obscureResponseURL = 'https://cdn.discordapp.com/attachments/9073067050906
 const plugin = require('./utils/plugin');
 const { collectInteractions } = require('./utils/interactionCollector');
 const { getUserSettings, setUserSettings } = require('./utils/settings');
+const { 
+    checkRateLimit, 
+    validateURL, 
+    sanitizeInput, 
+    hasPermission,
+    sanitizeSessionData 
+} = require('./utils/security');
 
 /** VARIABLES: DATA SET */
 const data = [];
-const filterListener = new EventEmitter();
-const urlHistory = []; // Store browsing history
+const obscureWords = new Map();
 
-let messageID;
-let obscureWords;
-let browser;
-let firefoxBrowser;
-let browserType = 'puppeteer'; // Track browser type for Chrome
-let firefoxBrowserType = 'playwright'; // Track browser type for Firefox
-let page;
-let runningUser;
-let collector;
-let mouseModifier = 70;
-let x = 980;
-let y = 400;
-let date;
+// Per-guild session management
+const guildSessions = new Map(); // Map<guildId, SessionData>
+
+// Rate limiting
+const userRateLimits = new Map(); // Map<userId, { count, resetTime }>
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 10; // 10 commands per minute
+
 let responseBuffer;
-let currentHistoryIndex = -1; // Track position in history
-let currentBrowserType = 'chrome'; // Track which browser is currently in use
-let performanceInterval; // Track performance mode interval
 let chromeLaunchOptions;
 let firefoxLaunchOptions;
+
+// Session data structure
+class SessionData {
+    constructor() {
+        this.messageID = null;
+        this.browser = null;
+        this.firefoxBrowser = null;
+        this.browserType = 'puppeteer';
+        this.firefoxBrowserType = 'playwright';
+        this.page = null;
+        this.runningUser = null;
+        this.collector = null;
+        this.mouseModifier = 70;
+        this.x = 980;
+        this.y = 400;
+        this.date = null;
+        this.urlHistory = [];
+        this.currentHistoryIndex = -1;
+        this.currentBrowserType = 'chrome';
+        this.performanceInterval = null;
+        this.filterListener = new EventEmitter();
+        this.data = [];
+    }
+}
 
 
 /** FUNCTIONS: INIT */
 
 async function loadFilters() {
-        const fetchData = await fetch(NSFW_LIST);
-        obscureWords = await fetchData.text();
+        try {
+            const fetchData = await fetch(NSFW_LIST);
+            const text = await fetchData.text();
+            const words = text.split('\n').filter(w => w.trim());
+            
+            // Use Map for O(1) lookups instead of array iteration
+            words.forEach(word => obscureWords.set(word.toLowerCase(), true));
+            
+            console.log(chalk.green(`✓ Loaded ${obscureWords.size} NSFW filters`));
+        } catch (e) {
+            console.log(chalk.yellow('⚠️  Failed to load NSFW word list, using blacklist only'));
+        }
 }
 
 function getBrowserByType(browserType) {
@@ -231,38 +263,54 @@ async function switchToBrowser(targetBrowserType, chromeLaunchOptions, firefoxLa
         }
 }
 
-async function resetProcess(sussyFilter, targetBrowser = 'chrome') {
-        console.log(chalk.yellow('🔄 Resetting browser session...'));
-        runningUser = undefined;
-        urlHistory.length = 0; // Clear history on reset
-        currentHistoryIndex = -1;
-        currentBrowserType = targetBrowser;
+async function resetProcess(guildId, sussyFilter, targetBrowser = 'chrome') {
+        console.log(chalk.yellow(`🔄 Resetting browser session for guild ${guildId}...`));
+        
+        let session = guildSessions.get(guildId);
+        if (!session) {
+            session = new SessionData();
+            guildSessions.set(guildId, session);
+        }
+        
+        session.runningUser = undefined;
+        session.urlHistory.length = 0;
+        session.currentHistoryIndex = -1;
+        session.currentBrowserType = targetBrowser;
 
-        if (performanceInterval) {
-                clearInterval(performanceInterval);
-                performanceInterval = null;
+        if (session.performanceInterval) {
+                clearInterval(session.performanceInterval);
+                session.performanceInterval = null;
         }
 
-        if (page) {
+        if (session.page) {
                 try {
-                        await page.close();
+                        await session.page.close();
                 } catch (e) {
                         // Ignore if already closed
                 }
-                page = null;
+                session.page = null;
         }
 
-        // Ensure we have the correct browser before resetting
-        const switchSuccess = await switchToBrowser(targetBrowser, chromeLaunchOptions, firefoxLaunchOptions);
-
-        if (!switchSuccess) {
-                console.log(chalk.red('✗ Failed to switch browser, aborting reset'));
-                return false;
+        // Create isolated browser instance for this guild
+        let activeBrowser, activeType;
+        
+        if (targetBrowser === 'firefox') {
+            if (!session.firefoxBrowser) {
+                const result = await BrowserAdapter.launchFirefox(firefoxLaunchOptions);
+                session.firefoxBrowser = result.browser;
+                session.firefoxBrowserType = result.type;
+            }
+            activeBrowser = session.firefoxBrowser;
+            activeType = session.firefoxBrowserType;
+        } else {
+            if (!session.browser) {
+                const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
+                session.browser = result.browser;
+                session.browserType = result.type;
+            }
+            activeBrowser = session.browser;
+            activeType = session.browserType;
         }
-
-        const activeBrowser = getBrowserByType(targetBrowser);
-        // Get the correct library type (puppeteer or playwright) from global variables
-        const activeType = targetBrowser === 'firefox' ? firefoxBrowserType : browserType;
 
         if (!activeBrowser) {
                 console.log(chalk.red('✗ No active browser available'));
@@ -270,25 +318,31 @@ async function resetProcess(sussyFilter, targetBrowser = 'chrome') {
         }
 
         // Get user settings for dark mode (use default if no user)
-        const currentUserSettings = runningUser ? getUserSettings(runningUser) : { darkMode: true };
+        const currentUserSettings = session.runningUser ? getUserSettings(session.runningUser) : { darkMode: true };
         
         // Create page using BrowserAdapter for proper API normalization
-        page = await BrowserAdapter.createPage(activeBrowser, activeType, currentUserSettings.darkMode);
+        session.page = await BrowserAdapter.createPage(activeBrowser, activeType, currentUserSettings.darkMode);
 
-        await page.setViewport({
+        await session.page.setViewport({
                 width: 1920,
                 height: 1080,
         });
 
-        await plugin(page);
-        await page.goto('https://google.com');
+        await plugin(session.page);
+        
+        // Apply security measures
+        sanitizeSessionData(session);
+        
+        await session.page.goto('https://google.com');
         console.log(chalk.green('✓ Browser session ready'));
 
         if (sussyFilter) {
-                await loadFilters();
+                if (obscureWords.size === 0) {
+                    await loadFilters();
+                }
 
                 /** ATTACH A REDIRECT LISTENER FOR POSSIBLE SUSPICIOUS WEBSITES/KEYWORDS */
-                page.on('response', async response => {
+                session.page.on('response', async response => {
                         const status = response.status();
 
                         if ((status >= 300) && (status <= 399)) {
@@ -297,8 +351,8 @@ async function resetProcess(sussyFilter, targetBrowser = 'chrome') {
                                 if (NSFW_OR_NOT === true) {
                                         console.log(chalk.red('⚠️  Blocked suspicious redirect:'), chalk.dim(response.headers()['location']));
                                         const interval = setInterval(() => {
-                                                if (filterListener.listenerCount('redirect') !== 0) {
-                                                        filterListener.emit('redirect', NSFW_OR_NOT);
+                                                if (session.filterListener.listenerCount('redirect') !== 0) {
+                                                        session.filterListener.emit('redirect', NSFW_OR_NOT);
                                                         clearInterval(interval);
                                                 }
                                         }, 100);
@@ -307,7 +361,7 @@ async function resetProcess(sussyFilter, targetBrowser = 'chrome') {
                 });
         }
 
-        await page.mouse.move(x, y);
+        await session.page.mouse.move(session.x, session.y);
         return true;
 }
 /**
@@ -328,6 +382,8 @@ async function buffer(url) {
  * @returns Boolean
  */
 async function sussySearch(content) {
+        if (!content || typeof content !== 'string') return false;
+        
         content = content.toLowerCase();
 
         // Check if URL is in exceptions list first
@@ -340,11 +396,14 @@ async function sussySearch(content) {
                 return true;
         }
 
-        // Then check the NSFW word list
-        const words = obscureWords.split('\n');
-        words.pop();
-
-        return words.some(word => content.includes(word));
+        // Then check the NSFW word list using Map for faster lookups
+        for (const [word] of obscureWords) {
+            if (content.includes(word)) {
+                return true;
+            }
+        }
+        
+        return false;
 }
 
 /**
@@ -585,21 +644,36 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                 if (int instanceof Eris.CommandInteraction) {
 
                         if (int.data.name === 'browse') {
+                                // Rate limiting check
+                                if (!checkRateLimit(int.member.id, userRateLimits, RATE_LIMIT_WINDOW, RATE_LIMIT_MAX)) {
+                                        return int.createMessage({
+                                                content: '⚠️ **Rate Limit Exceeded**\n\nYou\'re sending commands too quickly. Please wait a moment and try again.',
+                                                flags: 64
+                                        });
+                                }
+                                
                                 await int.acknowledge();
 
-                                console.log(chalk.blue('👤 Browse command from:'), chalk.yellow(int.member.user.username));
+                                console.log(chalk.blue('👤 Browse command from:'), chalk.yellow(int.member.user.username), chalk.dim(`in guild ${int.guildID}`));
 
-                                if (runningUser !== undefined) {
-                                        console.log(chalk.yellow('⚠️  Browser already in use, rejecting request'));
+                                const guildId = int.guildID;
+                                let session = guildSessions.get(guildId);
+                                if (!session) {
+                                    session = new SessionData();
+                                    guildSessions.set(guildId, session);
+                                }
+
+                                if (session.runningUser !== undefined) {
+                                        console.log(chalk.yellow('⚠️  Browser already in use in this server, rejecting request'));
                                         return int.createFollowup({
                                                 content: '⏳ **Browser Already In Use**\n\n' +
                                                         '**What\'s happening:**\n' +
-                                                        'Someone else is currently using the browser. Only one person can use it at a time.\n\n' +
+                                                        'Someone else in this server is currently using the browser. Only one person per server can use it at a time.\n\n' +
                                                         '**When can you use it:**\n' +
-                                                        `The current session will end <t:${Math.floor(date / 1000)}:R>\n\n` +
+                                                        `The current session will end <t:${Math.floor(session.date / 1000)}:R>\n\n` +
                                                         '**Why the limit:**\n' +
                                                         'Running multiple browser instances uses a lot of resources. Please wait for the current session to finish!',
-                                                flags: 64 // Ephemeral message
+                                                flags: 64
                                         });
                                 }
 
@@ -611,12 +685,26 @@ module.exports = async function browse(token, guildID, clearTime = 300000, sussy
                                         const urlOption = int.data.options.find(opt => opt.name === 'url');
                                         const browserOption = int.data.options.find(opt => opt.name === 'browser');
 
-                                        if (urlOption) urlValue = urlOption.value;
+                                        if (urlOption) {
+                                            urlValue = sanitizeInput(urlOption.value);
+                                        }
                                         if (browserOption) selectedBrowser = browserOption.value;
                                 }
 
+                                // Validate URL if provided
+                                if (urlValue) {
+                                    const validation = validateURL(urlValue);
+                                    if (!validation.valid) {
+                                        return int.createFollowup({
+                                            content: `❌ **Invalid URL**\n\n${validation.error}`,
+                                            flags: 64
+                                        });
+                                    }
+                                    urlValue = validation.url;
+                                }
+
                                 // resetProcess will handle browser switching automatically
-                                let resetSuccess = await resetProcess(sussyFilter, selectedBrowser);
+                                let resetSuccess = await resetProcess(guildId, sussyFilter, selectedBrowser);
 
                                 // If Firefox fails, fallback to Chrome
                                 if (!resetSuccess && selectedBrowser === 'firefox') {
