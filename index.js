@@ -12,7 +12,7 @@ const BOT_VERSION = 'v3.1.1';
 const NSFW_LIST = 'https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en';
 const blacklist = [
         // System/Security
-        'localhost', 'tcp', 'ngrok', 'file', 'settings', 'chrome://', 'ip', 'address', 'internet', 'wifi', 'network',
+        'localhost', 'tcp', 'ngrok', 'file', 'settings', 'chrome://', 'ip', 'address', 'internet', 'wifi', 'network', 'packet',
 
         // Adult Content - General Keywords
        'sophie rain', 'porn', 'sex', 'xxx', 'hentai', 'nsfw', 'nude', 'naked', 'adult', 'erotic', 'onlyfans',
