@@ -28,3 +28,6 @@ args = "node run.js"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[deployment]
+run = ["sh", "-c", "node run.js"]
