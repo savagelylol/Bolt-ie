@@ -19,6 +19,6 @@
     "chalk": "^4.1.2",
     "eris": "^0.17.1",
     "playwright": "^1.56.1",
-    "puppeteer": "^18.0.5"
+    "puppeteer": "^23.11.1"
   }
 }
