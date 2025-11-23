@@ -18,13 +18,13 @@ node_modules/
 *.log
 npm-debug.log*
 
-# OS files
+# OS files You dont touch
 .DS_Store
 Thumbs.db
 
 # Browser data
 .config/
 
-# IDE
+# IDE 
 .vscode/
 .idea/
