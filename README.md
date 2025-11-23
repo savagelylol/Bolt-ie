@@ -1,5 +1,5 @@
 
-# Bolt-ie - Secure Multi-Server Discord Browser Bot
+# Bolt-ie
 
 ⚠️ **Important Security Notice**: This bot provides browser access through Discord. Please read the security section carefully before deploying.
 
