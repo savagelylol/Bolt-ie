@@ -1,7 +1,7 @@
 
 const crypto = require('crypto');
 
-// Rate limiting
+// Rate limiting (very cool)
 function checkRateLimit(userId, userRateLimits, RATE_LIMIT_WINDOW, RATE_LIMIT_MAX) {
     const now = Date.now();
     const userLimit = userRateLimits.get(userId);
