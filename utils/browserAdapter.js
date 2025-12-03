@@ -2,7 +2,7 @@
 const chalk = require('chalk');
 
 /**
- * Browser Adapter - Handles Puppeteer (Chrome) and Playwright (Firefox) browser operations
+ * Browser Adapter - Handles Puppeteer (Chrome) browser operations
  */
 
 class BrowserAdapter {
@@ -25,44 +25,18 @@ class BrowserAdapter {
     }
 
     /**
-     * Launch Firefox with Playwright
-     */
-    static async launchFirefox(firefoxLaunchOptions) {
-        try {
-            const { firefox } = require('playwright');
-            console.log(chalk.yellow('  Launching Firefox with Playwright...'));
-
-            const browser = await firefox.launch(firefoxLaunchOptions);
-            console.log(chalk.green('✓ Firefox browser initialized'));
-
-            return { browser, type: 'playwright' };
-        } catch (error) {
-            console.log(chalk.red('✗ Firefox launch failed:'), chalk.dim(error.message));
-            throw error;
-        }
-    }
-
-    /**
      * Create a new page
      */
     static async createPage(browser, browserType, darkMode = false) {
         let page;
         
-        if (browserType === 'playwright') {
-            // Playwright (Firefox)
-            const context = await browser.newContext({
-                colorScheme: darkMode ? 'dark' : 'light'
-            });
-            page = await context.newPage();
-        } else {
-            // Puppeteer (Chrome)
-            page = await browser.newPage();
-            
-            if (darkMode) {
-                await page.emulateMediaFeatures([
-                    { name: 'prefers-color-scheme', value: 'dark' }
-                ]);
-            }
+        // Puppeteer (Chrome)
+        page = await browser.newPage();
+        
+        if (darkMode) {
+            await page.emulateMediaFeatures([
+                { name: 'prefers-color-scheme', value: 'dark' }
+            ]);
         }
 
         if (!page) {
@@ -79,34 +53,29 @@ class BrowserAdapter {
         try {
             if (!browser) return;
 
-            if (browserType === 'playwright') {
-                // Playwright browser
+            // Puppeteer browser
+            try {
+                const pages = await browser.pages();
+                for (const p of pages) {
+                    await p.close().catch(() => {});
+                }
+            } catch (e) {
+                // Ignore errors closing pages
+            }
+
+            const browserProcess = browser.process();
+            
+            try {
                 await browser.close();
-            } else {
-                // Puppeteer browser
-                try {
-                    const pages = await browser.pages();
-                    for (const p of pages) {
-                        await p.close().catch(() => {});
-                    }
-                } catch (e) {
-                    // Ignore errors closing pages
-                }
+            } catch (e) {
+                // Ignore if already closed
+            }
 
-                const browserProcess = browser.process();
-                
+            if (browserProcess) {
                 try {
-                    await browser.close();
+                    browserProcess.kill('SIGKILL');
                 } catch (e) {
-                    // Ignore if already closed
-                }
-
-                if (browserProcess) {
-                    try {
-                        browserProcess.kill('SIGKILL');
-                    } catch (e) {
-                        // Process may already be dead
-                    }
+                    // Process may already be dead
                 }
             }
 

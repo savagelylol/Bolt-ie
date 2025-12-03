@@ -104,7 +104,7 @@ MAX_SESSION_DURATION=600000  # 10 minutes max session
 
 ## 📝 Available Commands
 
-- `/browse [url] [browser]` - Start browsing (optionally provide a URL and browser choice)
+- `/browse [url]` - Start browsing (optionally provide a URL)
 - `/presets` - Quick access to popular websites
 - `/ping` - Check bot status and latency
 - `/settings` - Configure your browsing preferences
@@ -114,12 +114,11 @@ MAX_SESSION_DURATION=600000  # 10 minutes max session
 - **Not suitable for public bots** - Resource intensive, requires monitoring
 - **No persistent storage** - Deployments reset filesystem on redeploy
 - **Single session per server** - Only one user can browse at a time per server
-- **Memory intensive** - Chromium/Firefox require significant RAM
+- **Memory intensive** - Chromium requires significant RAM
 
 ## 🛠️ Configuration
 
 ### User Settings (per-user):
-- Browser choice (Chrome/Firefox)
 - Dark mode
 - Ad blocking
 - Screenshot quality

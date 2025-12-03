@@ -113,8 +113,8 @@ dashboard/
 
 ## Available Settings
 
-### General Settings (7)
-- Default Browser, Allow Firefox, Dark Mode, Dashboard Theme, Locale, Time Zone, Command Prefix
+### General Settings (5)
+- Default Browser, Dark Mode, Dashboard Theme, Locale, Time Zone
 
 ### Access Control (8)
 - Allowed/Blocked Roles, Trusted Users, Maintenance Mode, Admin Only Commands, Moderator/Viewer Roles, Restricted Channels

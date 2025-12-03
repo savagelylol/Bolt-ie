@@ -3,9 +3,8 @@ import Joi from 'joi';
 
 // Default settings for a new guild
 export const DEFAULT_SETTINGS = {
-  // General Settings (6)
+  // General Settings (5)
   defaultBrowser: 'chrome',
-  allowFirefox: true,
   darkMode: true,
   dashboardTheme: 'dark',
   locale: 'en-US',
@@ -76,8 +75,7 @@ export const DEFAULT_SETTINGS = {
 
 // Validation schemas for each setting
 const settingSchemas: { [key: string]: Joi.Schema } = {
-  defaultBrowser: Joi.string().valid('chrome', 'firefox'),
-  allowFirefox: Joi.boolean(),
+  defaultBrowser: Joi.string().valid('chrome'),
   darkMode: Joi.boolean(),
   dashboardTheme: Joi.string().valid('dark', 'light', 'auto'),
   locale: Joi.string(),

@@ -114,11 +114,8 @@ const RATE_LIMIT_MAX = 10; // 10 commands per minute
 
 let responseBuffer;
 let chromeLaunchOptions;
-let firefoxLaunchOptions;
 let browser;
 let browserType;
-let firefoxBrowser;
-let firefoxBrowserType;
 let page;
 let runningUser;
 let messageID;
@@ -140,9 +137,7 @@ class SessionData {
     constructor() {
         this.messageID = null;
         this.browser = null;
-        this.firefoxBrowser = null;
         this.browserType = 'puppeteer';
-        this.firefoxBrowserType = 'playwright';
         this.page = null;
         this.runningUser = null;
         this.collector = null;
@@ -178,33 +173,15 @@ async function loadFilters() {
 }
 
 function getBrowserByType(browserType) {
-        if (browserType === 'firefox' && firefoxBrowser) {
-                return firefoxBrowser;
-        }
         return browser;
 }
 
-// Switch browsers - close one before launching the other to avoid "Multiple targets" error
-async function switchToBrowser(targetBrowserType, chromeLaunchOptions, firefoxLaunchOptions) {
+// Ensure Chrome browser is available
+async function ensureBrowser(chromeLaunchOptions) {
         try {
-                if (targetBrowserType === 'firefox') {
-                        // Check if Firefox is already connected
-                        if (BrowserAdapter.isConnected(firefoxBrowser, firefoxBrowserType)) {
-                                console.log(chalk.green('✓ Firefox browser already connected'));
-                                // Close current page
-                                if (page) {
-                                        try {
-                                                await page.close();
-                                        } catch (e) {
-                                                // Ignore if page already closed
-                                        }
-                                        page = null;
-                                }
-                                return true;
-                        }
-
-                        console.log(chalk.cyan('🦊 Switching to Firefox browser...'));
-
+                // Check if we already have a connected instance
+                if (BrowserAdapter.isConnected(browser, browserType)) {
+                        console.log(chalk.green('✓ Chrome browser already connected'));
                         // Close current page
                         if (page) {
                                 try {
@@ -214,77 +191,28 @@ async function switchToBrowser(targetBrowserType, chromeLaunchOptions, firefoxLa
                                 }
                                 page = null;
                         }
-
-                        // Close Chrome browser completely
-                        if (BrowserAdapter.isConnected(browser, browserType)) {
-                                console.log(chalk.yellow('  Closing Chrome...'));
-                                await BrowserAdapter.closeBrowser(browser, browserType);
-                                browser = null;
-                        }
-
-                        // Launch Firefox with Playwright (longer timeout for first-time browser download)
-                        try {
-                                const result = await Promise.race([
-                                        BrowserAdapter.launchFirefox(firefoxLaunchOptions),
-                                        new Promise((_, reject) => 
-                                                setTimeout(() => reject(new Error('Firefox launch timeout (this can happen on first run while Playwright downloads Firefox)')), 180000)
-                                        )
-                                ]);
-                                firefoxBrowser = result.browser;
-                                firefoxBrowserType = result.type;
-                        } catch (launchError) {
-                                console.log(chalk.red('✗ Firefox launch failed:'), chalk.dim(launchError.message));
-
-                                // Clean up any partial Firefox instance
-                                if (firefoxBrowser) {
-                                        await BrowserAdapter.closeBrowser(firefoxBrowser, firefoxBrowserType);
-                                        firefoxBrowser = null;
-                                }
-                                throw new Error('Firefox initialization failed - please use Chrome instead');
-                        }
-                } else {
-                        // For Chrome, check if we already have a connected instance
-                        if (BrowserAdapter.isConnected(browser, browserType)) {
-                                console.log(chalk.green('✓ Chrome browser already connected'));
-                                // Close current page
-                                if (page) {
-                                        try {
-                                                await page.close();
-                                        } catch (e) {
-                                                // Ignore if page already closed
-                                        }
-                                        page = null;
-                                }
-                                return true;
-                        }
-
-                        console.log(chalk.cyan('🌐 Switching to Chrome browser...'));
-
-                        // Close current page
-                        if (page) {
-                                try {
-                                        await page.close();
-                                } catch (e) {
-                                        // Ignore if page already closed
-                                }
-                                page = null;
-                        }
-
-                        // Close Firefox browser completely
-                        if (BrowserAdapter.isConnected(firefoxBrowser, firefoxBrowserType)) {
-                                console.log(chalk.yellow('  Closing Firefox...'));
-                                await BrowserAdapter.closeBrowser(firefoxBrowser, firefoxBrowserType);
-                                firefoxBrowser = null;
-                        }
-
-                        // Launch Chrome with Puppeteer
-                        const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
-                        browser = result.browser;
-                        browserType = result.type;
+                        return true;
                 }
+
+                console.log(chalk.cyan('🌐 Launching Chrome browser...'));
+
+                // Close current page
+                if (page) {
+                        try {
+                                await page.close();
+                        } catch (e) {
+                                // Ignore if page already closed
+                        }
+                        page = null;
+                }
+
+                // Launch Chrome with Puppeteer
+                const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
+                browser = result.browser;
+                browserType = result.type;
                 return true;
         } catch (e) {
-                console.log(chalk.red('✗ Browser switch failed'));
+                console.log(chalk.red('✗ Browser launch failed'));
                 console.log(chalk.dim('   Error:'), e.message);
                 return false;
         }
@@ -302,7 +230,7 @@ async function resetProcess(guildId, sussyFilter, targetBrowser = 'chrome') {
         session.runningUser = undefined;
         session.urlHistory.length = 0;
         session.currentHistoryIndex = -1;
-        session.currentBrowserType = targetBrowser;
+        session.currentBrowserType = 'chrome';
 
         if (session.performanceInterval) {
                 clearInterval(session.performanceInterval);
@@ -321,23 +249,13 @@ async function resetProcess(guildId, sussyFilter, targetBrowser = 'chrome') {
         // Create isolated browser instance for this guild
         let activeBrowser, activeType;
 
-        if (targetBrowser === 'firefox') {
-            if (!session.firefoxBrowser) {
-                const result = await BrowserAdapter.launchFirefox(firefoxLaunchOptions);
-                session.firefoxBrowser = result.browser;
-                session.firefoxBrowserType = result.type;
-            }
-            activeBrowser = session.firefoxBrowser;
-            activeType = session.firefoxBrowserType;
-        } else {
-            if (!session.browser) {
-                const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
-                session.browser = result.browser;
-                session.browserType = result.type;
-            }
-            activeBrowser = session.browser;
-            activeType = session.browserType;
+        if (!session.browser) {
+            const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
+            session.browser = result.browser;
+            session.browserType = result.type;
         }
+        activeBrowser = session.browser;
+        activeType = session.browserType;
 
         if (!activeBrowser) {
                 console.log(chalk.red('✗ No active browser available'));
@@ -556,36 +474,6 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                 chromeLaunchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
         }
 
-        // Firefox options for Playwright (with sandbox disabled for Replit)
-        firefoxLaunchOptions = {
-                args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox'
-                ],
-                headless: true,
-                timeout: 120000,
-                firefoxUserPrefs: {
-                        'security.sandbox.content.level': 0,
-                        'media.navigator.streams.fake': true
-                }
-        };
-
-        // Try to find Firefox executable path
-        try {
-                const { execSync } = require('child_process');
-                const firefoxPath = execSync('command -v firefox || command -v firefox-bin', { encoding: 'utf8' }).trim();
-                if (firefoxPath) {
-                        firefoxLaunchOptions.executablePath = firefoxPath;
-                }
-        } catch (e) {
-                // No system Firefox found, Playwright will use bundled version
-        }
-
-        // Override with environment variable if available
-        if (process.env.FIREFOX_EXECUTABLE_PATH) {
-                firefoxLaunchOptions.executablePath = process.env.FIREFOX_EXECUTABLE_PATH;
-        }
-
         // Launch initial Chrome browser with BrowserAdapter
         const result = await BrowserAdapter.launchChrome(chromeLaunchOptions);
         browser = result.browser;
@@ -671,16 +559,6 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                 description: 'The url you want to go to',
                                                 type: Eris.Constants.ApplicationCommandOptionTypes.STRING,
                                                 required: false,
-                                        },
-                                        {
-                                                name: 'browser',
-                                                description: 'Choose which browser to use',
-                                                type: Eris.Constants.ApplicationCommandOptionTypes.STRING,
-                                                required: false,
-                                                choices: [
-                                                        { name: 'Chrome', value: 'chrome' },
-                                                        { name: 'Firefox', value: 'firefox' }
-                                                ]
                                         },
                                 ],
                         },
@@ -883,22 +761,6 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
 
                                 // resetProcess will handle browser switching automatically
                                 let resetSuccess = await resetProcess(guildId, sussyFilter, selectedBrowser);
-
-                                // If Firefox fails, fallback to Chrome
-                                if (!resetSuccess && selectedBrowser === 'firefox') {
-                                        console.log(chalk.yellow('⚠️  Firefox failed, falling back to Chrome...'));
-
-                                        // Call resetProcess with chrome to properly initialize Chrome browser
-                                        resetSuccess = await resetProcess(guildId, sussyFilter, 'chrome'); // Pass guildId here
-
-                                        if (resetSuccess) {
-                                                await int.createFollowup({
-                                                        content: '⚠️ **Firefox unavailable - Using Chrome instead**\n\n' +
-                                                                'Firefox failed to start (this is common on some systems). Your session will continue with Chrome.',
-                                                        flags: 64
-                                                });
-                                        }
-                                }
 
                                 if (!resetSuccess) {
                                         console.log(chalk.red('✗ Browser initialization failed'));
@@ -1649,7 +1511,6 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                         interval5s: String(Math.random()),
                                         interval10s: String(Math.random()),
                                         browserChrome: String(Math.random()),
-                                        browserFirefox: String(Math.random()),
                                         darkModeToggle: String(Math.random()),
                                         adBlockToggle: String(Math.random()),
                                         timeout3min: String(Math.random()),
@@ -1680,7 +1541,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                                 },
                                                                 {
                                                                         name: '🌐 Browser Settings',
-                                                                        value: `Browser: ${userSettings.browser === 'firefox' ? '🦊 Firefox' : '🌐 Chrome'}\n` +
+                                                                        value: `Browser: 🌐 Chrome\n` +
                                                                                `Dark Mode: ${userSettings.darkMode ? '✅ Enabled' : '❌ Disabled'}\n` +
                                                                                `Ad Block: ${userSettings.adBlock !== false ? '✅ Enabled' : '❌ Disabled'}`,
                                                                         inline: false
@@ -1846,35 +1707,24 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                 }
 
                                 async function showBrowserChoiceMenu(interaction) {
-                                        const currentSettings = getUserSettings(int.member.id);
-                                        const currentBrowser = currentSettings.browser;
-
-                                        // Firefox is available if a browser is connected or can be launched
-                                        const firefoxAvailable = true; // Firefox is now installed
-
                                         await interaction.editOriginalMessage({
                                                 embeds: [{
                                                         title: '🌐 Browser Settings',
-                                                        description: 'Choose your preferred browser for new sessions',
+                                                        description: 'Browser configuration',
                                                         color: 0x00AAFF,
                                                         fields: [
                                                                 {
-                                                                        name: 'Current Default',
-                                                                        value: currentBrowser === 'firefox' ? '🦊 Firefox' : '🌐 Chrome',
-                                                                        inline: false
-                                                                },
-                                                                {
-                                                                        name: 'Available Browsers',
-                                                                        value: `🌐 Chrome: ✅ Available\n🦊 Firefox: ${firefoxAvailable ? '✅ Available' : '❌ Not Available'}`,
+                                                                        name: 'Current Browser',
+                                                                        value: '🌐 Chrome (Chromium)',
                                                                         inline: false
                                                                 },
                                                                 {
                                                                         name: 'ℹ️ Note',
-                                                                        value: 'Your browser preference will be used for new `/browse` sessions when no browser is specified.',
+                                                                        value: 'Chrome is the default browser engine for all browsing sessions.',
                                                                         inline: false
                                                                 }
                                                         ],
-                                                        footer: { text: 'Select your preferred browser' }
+                                                        footer: { text: 'Chrome provides the best compatibility' }
                                                 }],
                                                 components: [
                                                         {
@@ -1882,16 +1732,10 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                                 components: [
                                                                         { 
                                                                                 type: 2, 
-                                                                                label: '🌐 Chrome', 
+                                                                                label: '🌐 Chrome (Active)', 
                                                                                 custom_id: settingsIds.browserChrome, 
-                                                                                style: currentBrowser === 'chrome' ? 1 : 2 
-                                                                        },
-                                                                        { 
-                                                                                type: 2, 
-                                                                                label: '🦊 Firefox', 
-                                                                                custom_id: settingsIds.browserFirefox, 
-                                                                                style: currentBrowser === 'firefox' ? 1 : 2,
-                                                                                disabled: !firefoxAvailable
+                                                                                style: 1,
+                                                                                disabled: true
                                                                         }
                                                                 ]
                                                         },
@@ -2003,7 +1847,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                         },
                                                         {
                                                                 name: '🌐 Browser Settings',
-                                                                value: `Browser: ${userSettings.browser === 'firefox' ? '🦊 Firefox' : '🌐 Chrome'}\n` +
+                                                                value: `Browser: 🌐 Chrome\n` +
                                                                        `Dark Mode: ${userSettings.darkMode ? '✅ Enabled' : '❌ Disabled'}\n` +
                                                                        `Ad Block: ${userSettings.adBlock !== false ? '✅ Enabled' : '❌ Disabled'}`,
                                                                 inline: false
@@ -2146,17 +1990,6 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                 setUserSettings(int.member.id, { browser: 'chrome' });
                                                 userSettings.browser = 'chrome';
                                                 console.log(chalk.green('🌐 Default browser set to:'), chalk.yellow('Chrome'));
-                                                await showBrowserChoiceMenu(settingsInt);
-                                        }
-                                        else if (customId === settingsIds.browserFirefox) {
-                                                // Save preference - actual browser switching happens when user runs /browse
-                                                setUserSettings(int.member.id, { browser: 'firefox' });
-                                                userSettings.browser = 'firefox';
-                                                console.log(chalk.green('🌐 Default browser set to:'), chalk.yellow('Firefox'));
-                                                await bot.createMessage(settingsInt.channel.id, {
-                                                        content: '✅ Firefox will be used for your next browsing session.',
-                                                        messageReference: { messageID: settingsInt.message.id }
-                                                });
                                                 await showBrowserChoiceMenu(settingsInt);
                                         }
                                         else if (customId === settingsIds.sessionSettings) {

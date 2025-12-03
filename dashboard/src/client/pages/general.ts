@@ -42,19 +42,12 @@ export function renderGeneralPage(container: HTMLElement) {
   const browserSettings = document.getElementById('browser-settings')!;
   browserSettings.appendChild(createSelect(
     'Default Browser',
-    'Choose which browser to use by default',
+    'Browser engine used for browsing',
     'defaultBrowser',
     settings.defaultBrowser,
     [
-      { value: 'chrome', label: 'Chrome (Chromium)' },
-      { value: 'firefox', label: 'Firefox' }
+      { value: 'chrome', label: 'Chrome (Chromium)' }
     ]
-  ));
-  browserSettings.appendChild(createToggle(
-    'Allow Firefox',
-    'Enable Firefox browser option',
-    'allowFirefox',
-    settings.allowFirefox
   ));
 
   const appearanceSettings = document.getElementById('appearance-settings')!;
