@@ -1,140 +1,161 @@
-# Discordmium
 
-Warning: This is meant for self-use only. You should not host this and make it publicly available to users, as they have full control over a browser inside your PC, as well as network information and user agent.
+# Chromie - Secure Multi-Server Discord Browser Bot
 
-## 🤨 ● What the hell is this?
-Discordmium brings the Chromium browser instance in Discord, of course limited to the Discord API.
 
-![image](https://user-images.githubusercontent.com/69168154/210166179-4cda39b1-a191-4dd0-85bd-51b12c670942.png)
+⚠️ **Important Security Notice**: This bot provides browser access through Discord. Please read the security section carefully before deploying.
 
-## ✨ Features
+## 🔒 Security Features
 
-- 🌐 **Browse the web** directly from Discord with a virtual Chromium browser
+- ✅ **Per-Server Isolation** - Each server gets its own browser session
+- ✅ **Rate Limiting** - Prevents command spam (10 commands/minute per user)
+- ✅ **URL Validation** - Blocks local IPs, file:// protocol, and malicious URLs
+- ✅ **Content Filtering** - NSFW and malicious content blocking
+- ✅ **Input Sanitization** - All user inputs are sanitized
+- ✅ **No File System Access** - Users cannot access local files
+- ✅ **Ad Blocking** - Blocks ads and trackers by default
+
+## ⚙️ Features
+
+- 🎛 **Cuting edge dashboard** 
+- 🌐 **Browse the web** directly from Discord with isolated browser sessions per server
 - 🎮 **Interactive controls** - Navigate using Discord buttons
 - ⌨️ **Typing support** - Type text directly into web pages
-- 🚀 **Quick presets** - Instantly open popular websites (Google, YouTube, GitHub, Reddit, Twitter, Wikipedia, and more!)
-- 📜 **Scroll functionality** - Scroll up and down pages with dedicated buttons
-- ◀️▶️ **Navigation** - Go back and forward through your browsing history
-- 📚 **History tracking** - View the last 10 URLs you visited in your session
+- 🚀 **Quick presets** - Instantly open popular websites
+- 📜 **Scroll functionality** - Scroll up and down pages
+- ◀️▶️ **Navigation** - Go back and forward through browsing history
+- 📚 **History tracking** - View the last 10 URLs visited
 - 🎯 **Adjustable mouse sensitivity** - Fine-tune cursor movement
-- 🛡️ **Content filtering** - Built-in filters for safety and security
-- 📸 **Live screenshots** - See real-time updates of the browser
+- 🛡️ **Content filtering** - Built-in filters for safety
+- 📸 **Live screenshots** - Real-time browser updates
 
-## Installation
+## 📦 Installation
 
-```shell
-npm i discordmium
+1. **Clone the repository**
+```bash
+git clone <your-repo-url>
+cd Chromie
 ```
 
-## Bot Creation
-A bot account is required in order to run Discordmium. This is an easy process and will help you get set up.
+2. **Install dependencies**
+```bash
+npm install
+```
 
-1. Ensure you are logged in to the Discord website by clicking [here](https://discord.com/app).
-2. Once logged in, visit the [Discord Developer Portal](https://discord.com/developers/applications).
-3. Click the **New Application** button in the top right.
+3. **Set up environment variables**
+```bash
+cp .env.example .env
+```
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/new-app.png)
+Edit `.env` and add your Discord bot token:
+```env
+DISCORD_TOKEN=your_discord_bot_token_here
+```
 
-4. Give the application a name and agree to Discord's Developer ToS and Developer Policy.
+**Note:** The bot no longer requires a GUILD_ID. It will work in any server where it's added!
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/bot-name.png)
+Get your bot invite link:
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Select your application
+3. Copy your Client ID
+4. Use this invite URL (replace YOUR_CLIENT_ID):
+```
+https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=414464724032&scope=bot%20applications.commands
+```
 
-5. Click **Create**.
-6. On the left of the screen, click the **Bot** section.
+4. **Run the bot**
+```bash
+npm start
+```
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/bot-page.png)
+## 🚀 Deployment on Replit
 
-7. Click the **Add Bot** button.
+This bot is optimized for deployment on Replit:
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/add-bot.png)
+1. Fork this Repl
+2. Add your `DISCORD_TOKEN` and `GUILD_ID` in the Secrets tool (🔒 icon in sidebar)
+3. Click **Deploy** and choose **Reserved VM** (recommended for Discord bots)
+4. Configure your deployment:
+   - Run command: `node run.js`
+   - The bot will automatically start and stay online
 
-8. Confirm the creation of the bot by clicking the **Yes, do it!** button.
+### Why Reserved VM?
+- ✅ Persistent connection for Discord bot
+- ✅ 99.9% uptime guarantee
+- ✅ No cold starts
+- ✅ Suitable for long-running processes
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/add-bot-confirm.png)
+## 🔐 Security Best Practices
 
-9. Congratulations! A bot has been created on your application. Just a little more configuration is needed.
-10. Set the bot's profile picture if desired.
-11. Scroll down until you see the **Message Content Intent** option and toggle it. (Remember to save your changes!)
+### Before Deploying:
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/intent.png)
+1. **Never share your bot token** - Keep it in Secrets/environment variables only
+2. **Review the blacklist** - Add any additional blocked keywords in `index.js`
+3. **Set appropriate rate limits** - Adjust `RATE_LIMIT_MAX` based on your needs
+4. **Monitor resource usage** - Each browser session uses ~500MB RAM
+5. **Limit concurrent sessions** - Default is 1 per server (recommended)
 
-12. Scroll back up and click **Reset Token**.
+### Recommended Settings:
 
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/reset-token.png)
-
-13. Confirm by clicking the **Yes, do it!** button.
-
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/reset-token-confirm.png)
-
-14. Your bot's token will now be displayed. Don't share it with anyone, and keep it somewhere safe as it will be required for the bot to function!
-
-![image](https://raw.githubusercontent.com/asdfzxcvbn/discordmium/bot-guide/imgs/token-shown.png)
-
-Now that the bot has been set up, the token can now be used to run Discordmium!
+```env
+RATE_LIMIT_WINDOW=60000  # 1 minute
+RATE_LIMIT_MAX=10        # 10 commands per minute
+MAX_SESSION_DURATION=600000  # 10 minutes max session
+```
 
 ## 📝 Available Commands
 
-- `/browse [url]` - Start browsing (optionally provide a URL)
-- `/presets` - Quick access to popular websites (Google, YouTube, GitHub, Reddit, Twitter, Wikipedia, Discord, Stack Overflow, Amazon, Twitch)
-- `/ping` - Check bot status, latency, and system information
+- `/browse [url] [browser]` - Start browsing (optionally provide a URL and browser choice)
+- `/presets` - Quick access to popular websites
+- `/ping` - Check bot status and latency
+- `/settings` - Configure your browsing preferences
 
-## 🎮 Control Buttons
+## ⚠️ Known Limitations
 
-Once you start browsing, you'll have access to these streamlined controls:
+- **Not suitable for public bots** - Resource intensive, requires monitoring
+- **No persistent storage** - Deployments reset filesystem on redeploy
+- **Single session per server** - Only one user can browse at a time per server
+- **Memory intensive** - Chromium/Firefox require significant RAM
 
-**Row 1: Mouse Sensitivity** (3 buttons)
-- **x25, x50, x100** - Adjust cursor movement speed
+## 🛠️ Configuration
 
-**Row 2: Navigation** (4 buttons)
-- **◀ Back** - Go back to previous page
-- **Forward ▶** - Go forward in history
-- **🔄 Reset** - Reset browser to Google homepage
-- **📜 History** - View last 10 visited URLs
+### User Settings (per-user):
+- Browser choice (Chrome/Firefox)
+- Dark mode
+- Ad blocking
+- Screenshot quality
+- Session timeout
+- Auto-close browser
+- Performance mode
 
-**Row 3: Cursor Movement** (5 buttons)
-- **← Left** - Move cursor left
-- **↑ Up** - Move cursor up
-- **🖱️ Click** - Click at cursor position
-- **↓ Down** - Move cursor down
-- **→ Right** - Move cursor right
+### System Settings (environment):
+- Rate limiting
+- Content filtering
+- Maximum session duration
 
-**Row 4: Actions** (4 buttons)
-- **⌨️ Type** - Enter text mode
-- **↵ Enter** - Press Enter key
-- **⬆ Scroll** - Scroll page up 500px
-- **⬇ Scroll** - Scroll page down 500px
+## 📊 Resource Requirements
 
-*Total: 16 clean, organized buttons*
+- **RAM**: ~500MB per active browser session
+- **CPU**: 1 vCPU minimum per session
+- **Storage**: ~200MB for browser binaries
 
-## Usage
+## 🤝 Contributing
 
-```javascript
-const Browser = require('discordmium');
+This is a personal project. Feel free to fork and modify for your own use.
 
-Browser(<DiscordToken>, <GuildId>, <RestartTime>, <sussyFilter>)
-/** Note - tokens and IDs should be strings "like this" */
+## 📄 License
 
-/** DiscordToken - Get it from Discord Developers Portal */
-/** RestartTime - (optional, default = 300000) The amount of ms to wait to restart the current browser and let other users run the command again */
-/** sussyFilter - (optional, default = true) Whether the content in the type button and URL input shall be filtered or not. */
-```
+MIT License - Use at your own risk
 
-## Running
+## ⚠️ Disclaimer
 
-```bash
-node .
-```
+This bot provides access to web browsing through Discord. Users can access any public website. The bot includes security measures, but no system is perfect. Use responsibly and monitor usage.
 
-## License
-Free use as long as credited.
+**Not recommended for:**
+- Public Discord servers with untrusted users
+- Production environments without monitoring
+- Servers with strict compliance requirements
 
-## Hackathon
-Documatic is a search engine for your codebase; Ask documatic a question and find relevant code snippets and insights in seconds.
-
-https://www.documatic.com/
-Documatic acts as a search engine for your codebase; once you describe what you're looking for, Documatic pulls up related code or documentation making it easier to find what you're looking for in seconds!
-
-Not sitting next to each other? No problem. Ask Documatic questions of your codebase to learn and understand your code in seconds. Documatic is the team member you wish you had
-
-Our Visual studio Code extension: https://marketplace.visualstudio.com/items?itemName=Documatic.documatic
-https://cdn.discordapp.com/attachments/926110059782615071/1037404343470661713/Documatic_sh6hrz.gif
+**Recommended for:**
+- Private servers with trusted members
+- Development and testing
+- Educational purposes

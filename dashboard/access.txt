@@ -1,0 +1,7 @@
+
+# Add Discord user IDs or usernames (one per line)
+# Example:
+# 123456789012345678
+# username
+
+1208244783278067793

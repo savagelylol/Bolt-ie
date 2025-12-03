@@ -4,3 +4,27 @@ npm-debug.log
 .env
 *.log
 .DS_Store
+# Environment variables
+.env
+
+# User data
+data/
+attached_assets/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files You dont touch
+.DS_Store
+Thumbs.db
+
+# Browser data
+.config/
+
+# IDE 
+.vscode/
+.idea/
