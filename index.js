@@ -275,6 +275,50 @@ async function resetProcess(guildId, sussyFilter, targetBrowser = 'chrome') {
 
         await plugin(session.page);
 
+        // Set up anti-bot notification callback
+        session.page._antiBotNotificationCallback = async (pattern, alternative) => {
+                try {
+                        const detectedSite = pattern.includes('google') ? 'Google' : 
+                                            pattern.includes('bing') ? 'Bing' :
+                                            pattern.includes('yahoo') ? 'Yahoo' : 'the website';
+
+                        // Ensure session.messageID is available and has channel.id
+                        if (!session.messageID || !session.messageID.channel || !session.messageID.channel.id) {
+                                console.log(chalk.yellow('⚠️  Cannot send anti-bot notification: Missing messageID or channel information.'));
+                                return;
+                        }
+
+                        await bot.createMessage(session.messageID.channel.id, {
+                                embeds: [{
+                                        title: '🛡️ Discordmium Stealth Protection',
+                                        description: `**Anti-bot page detected and bypassed!**\n\n` +
+                                                   `${detectedSite} tried to show you a captcha/verification page, but Discordmium Stealth automatically protected you and redirected to a safer alternative.\n\n` +
+                                                   `**What happened:**\n` +
+                                                   `• Detected: \`${pattern}\`\n` +
+                                                   `• Redirected to: ${alternative}\n\n` +
+                                                   `You can continue browsing normally! 🚀`,
+                                        color: 0x00FF00,
+                                        footer: {
+                                                text: 'Powered by Puppeteer Stealth'
+                                        },
+                                        timestamp: new Date()
+                                }],
+                                components: [{
+                                        type: 1,
+                                        components: [{
+                                                type: 2,
+                                                label: 'Dismiss',
+                                                custom_id: `dismiss_${Date.now()}`,
+                                                style: 2,
+                                                emoji: { name: '✅' }
+                                        }]
+                                }]
+                        });
+                } catch (e) {
+                        console.log(chalk.yellow('⚠️  Could not send anti-bot notification:'), e.message);
+                }
+        };
+
         // Apply security measures
         sanitizeSessionData(session);
 
@@ -326,6 +370,7 @@ function syncSessionToGlobals(session) {
         y = session.y;
         runningUser = session.runningUser;
         date = session.date;
+        messageID = session.messageID; // Also sync messageID
 }
 
 /**
@@ -502,7 +547,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                 try {
                         const botGuilds = bot.guilds;
                         console.log(chalk.cyan(`📊 Bot is in ${botGuilds.size} guilds`));
-                        
+
                         // Store bot presence for each guild
                         for (const guild of botGuilds.values()) {
                                 // First ensure the guild exists in the guilds table
@@ -519,7 +564,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                 icon: guild.icon || null,
                                                 updated_at: db.fn.now()
                                         });
-                                
+
                                 // Then store bot presence setting
                                 await db('guild_settings')
                                         .insert({
@@ -580,7 +625,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                         }
                 ]).then(async () => {
                         console.log(chalk.green('✓ Global commands registered'));
-                        
+
                         // Clear any old guild-specific commands to prevent duplicates
                         for (const guild of bot.guilds.values()) {
                                 try {
@@ -946,6 +991,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                         };
 
                                         messageID = await int.createFollowup(messageObject, { name: 'file.png', file: image });
+                                        session.messageID = messageID; // Store messageID in session
 
                                         if (userSettings.performanceMode) {
                                                 await startPerformanceMode(bot, int.member.id, userSettings.updateInterval);
@@ -1239,13 +1285,32 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
 
                                         const selected = websites[presetInt.data.custom_id];
 
-                                        if (runningUser !== undefined) {
+                                        // Ensure session is available and has necessary properties
+                                        let session = guildSessions.get(int.guildID);
+                                        if (!session) {
+                                            session = new SessionData();
+                                            guildSessions.set(int.guildID, session);
+                                        }
+                                        session.runningUser = presetInt.member.id; // Set running user
+
+                                        if (runningUser !== undefined && runningUser !== presetInt.member.id) {
                                                 return presetInt.createFollowup({
                                                         content: '⏳ **Browser Already In Use**\n\n' +
                                                                 'Someone else is currently using the browser. Please wait for the current session to finish!',
                                                         flags: 64
                                                 });
                                         }
+                                        
+                                        // Reset the process to ensure a clean state
+                                        const resetSuccess = await resetProcess(int.guildID, sussyFilter, userSettings.browser);
+                                        if (!resetSuccess) {
+                                                console.log(chalk.red('✗ Browser reset failed for preset'));
+                                                return presetInt.createFollowup({
+                                                        content: '❌ **Browser Reset Failed**\n\nCould not reset the browser for the preset. Please try again later.',
+                                                        flags: 64
+                                                });
+                                        }
+                                        syncSessionToGlobals(session); // Sync after reset
 
                                         console.log(chalk.green(`🌐 Opening preset: ${selected.name}`));
 
@@ -1255,6 +1320,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                 runningUser = presetInt.member.id;
                                                 const presetTimeout = presetUserSettings.sessionTimeout || clearTime;
                                                 date = Date.now() + presetTimeout;
+                                                session.date = date; // Update session date
 
                                                 setTimeout(async () => {
                                                         console.log(chalk.yellow('⏱️  Session timeout - closing browser session'));
@@ -1272,6 +1338,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
 
                                                 await page.goto(selected.url);
                                                 urlHistory.push(selected.url);
+                                                session.urlHistory.push(selected.url); // Update session history
                                                 console.log(chalk.green('✓ Navigated to:'), chalk.dim(selected.url));
 
                                                 const presetScreenshotQuality = presetUserSettings.screenshotQuality || 80;
@@ -1338,6 +1405,7 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                 };
 
                                                 messageID = await presetInt.createFollowup(messageObject, { name: 'file.png', file: image });
+                                                session.messageID = messageID; // Store messageID in session
 
                                                 if (presetUserSettings.performanceMode) {
                                                         await startPerformanceMode(bot, presetInt.member.id, presetUserSettings.updateInterval);
@@ -1412,7 +1480,45 @@ module.exports = async function browse(token, clearTime = 300000, sussyFilter = 
                                                                         });
 
                                                                         await plugin(page);
-                                                                        await page.goto('https://google.com');
+                                                                        // Set up anti-bot notification callback
+                                                                        session.page._antiBotNotificationCallback = async (pattern, alternative) => {
+                                                                                try {
+                                                                                        const detectedSite = pattern.includes('google') ? 'Google' : 
+                                                                                                            pattern.includes('bing') ? 'Bing' :
+                                                                                                            pattern.includes('yahoo') ? 'Yahoo' : 'the website';
+
+                                                                                        await bot.createMessage(messageID.channel.id, {
+                                                                                                embeds: [{
+                                                                                                        title: '🛡️ Discordmium Stealth Protection',
+                                                                                                        description: `**Anti-bot page detected and bypassed!**\n\n` +
+                                                                                                                   `${detectedSite} tried to show you a captcha/verification page, but Discordmium Stealth automatically protected you and redirected to a safer alternative.\n\n` +
+                                                                                                                   `**What happened:**\n` +
+                                                                                                                   `• Detected: \`${pattern}\`\n` +
+                                                                                                                   `• Redirected to: ${alternative}\n\n` +
+                                                                                                                   `You can continue browsing normally! 🚀`,
+                                                                                                        color: 0x00FF00,
+                                                                                                        footer: {
+                                                                                                                text: 'Powered by Puppeteer Stealth'
+                                                                                                        },
+                                                                                                        timestamp: new Date()
+                                                                                                }],
+                                                                                                components: [{
+                                                                                                        type: 1,
+                                                                                                        components: [{
+                                                                                                                type: 2,
+                                                                                                                label: 'Dismiss',
+                                                                                                                custom_id: `dismiss_${Date.now()}`,
+                                                                                                                style: 2,
+                                                                                                                emoji: { name: '✅' }
+                                                                                                        }]
+                                                                                                }]
+                                                                                        });
+                                                                                } catch (e) {
+                                                                                        console.log(chalk.yellow('⚠️  Could not send anti-bot notification:'), e.message);
+                                                                                }
+                                                                        };
+
+                                                                        await session.page.goto('https://google.com');
                                                                         urlHistory.length = 0;
                                                                         if (presetSession) presetSession.urlHistory = urlHistory;
 

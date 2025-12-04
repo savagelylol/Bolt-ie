@@ -199,6 +199,11 @@ async function pluginInit(page) {
                 console.log(chalk.yellow(`⚠️  Anti-bot page detected: ${pattern}`));
                 console.log(chalk.cyan(`🔄 Redirecting to alternative: ${alternative}`));
                 
+                // Emit event for bot to send notification
+                if (page._antiBot NotificationCallback) {
+                    page._antiBotNotificationCallback(pattern, alternative);
+                }
+                
                 await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
                 
                 try {
