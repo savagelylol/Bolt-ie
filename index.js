@@ -1,4 +1,4 @@
-/** PACKAGES: IMPORT */
+/** PACKAGES v2: IMPORT */
 const puppeteer = require('puppeteer');
 const EventEmitter = require('events').EventEmitter;
 const Eris = require('eris');
