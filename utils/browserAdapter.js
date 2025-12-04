@@ -23,7 +23,7 @@ function getRandomUserAgent() {
 class BrowserAdapter {
     static async launchChrome(chromeLaunchOptions) {
         try {
-            console.log(chalk.yellow('  Launching Chrome with Puppeteer Stealth...'));
+            console.log(chalk.yellow('  Launching Chrome with Discordmium Stealth...'));
 
             const stealthArgs = [
                 '--no-sandbox',

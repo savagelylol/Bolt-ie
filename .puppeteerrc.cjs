@@ -8,6 +8,6 @@ module.exports = {
   },
   // Download Firefox 
   firefox: {
-    skipDownload: false,
+    skipDownload: true,
   },
 };
