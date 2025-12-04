@@ -30,9 +30,20 @@ The dashboard includes 8 major categories with 57 total settings:
 7. **Quality of Life** (5): User experience and automation features
 8. **Audit Logs**: Complete history of all configuration changes
 
-## Recent Changes (December 3, 2025)
+## Recent Changes (December 4, 2025)
 
-### Session Management & Stability Fixes
+### Performance Optimizations & Bug Fixes
+Major performance improvements to significantly speed up bot response times:
+- **Instant Keyboard Typing**: Removed 10ms per-character delay for instant text input (previously took 100ms+ for 10 characters)
+- **Faster Anti-bot Redirects**: Reduced redirect delays from 500-1500ms to 50-150ms (3-10x faster)
+- **Faster Browser Cleanup**: Reduced cleanup delay from 1000ms to 100ms (10x faster)
+- **Fixed Mouse Controls**: Corrected boundary logic with proper bounds checking and clamping
+- **Fixed Text Input Bug**: Fixed critical bug where data.splice used an object instead of array index
+- **Database Connection Reuse**: forceEndMaintenance now reuses existing database connection
+- **Memory Leak Prevention**: Added periodic rate limit cleanup every 5 minutes
+- **Graceful Shutdown**: Added proper cleanup on SIGTERM/SIGINT to close all browser instances
+
+### Session Management & Stability Fixes (December 3, 2025)
 Critical fixes to the bot's session management system:
 - **Session Sync Fix**: Added `syncSessionToGlobals()` helper to maintain consistency between per-guild sessions and global variables
 - **Initial Session Sync**: Session state now syncs immediately after browser initialization at startup
